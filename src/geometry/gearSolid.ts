@@ -26,6 +26,10 @@ function polygonArea(points: Point2D[]): number {
   return area / 2;
 }
 
+function ensureCounterClockwise(points: Point2D[]): Point2D[] {
+  return polygonArea(points) < 0 ? points.slice().reverse() : points;
+}
+
 function cross(a: Point2D, b: Point2D, c: Point2D): number {
   return (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
 }
@@ -246,7 +250,7 @@ function buildSideTriangles(pointCount: number): Triangle[] {
 }
 
 function extrudePolygonToSolid(polygon: Point2D[], thickness: number): SolidMesh {
-  const cleanPolygon = dedupeClosingPoint(polygon);
+  const cleanPolygon = ensureCounterClockwise(dedupeClosingPoint(polygon));
   if (cleanPolygon.length < 3) {
     throw new Error('Outline requires at least three points');
   }

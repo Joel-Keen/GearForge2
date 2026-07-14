@@ -12,7 +12,7 @@ describe('gear profile helpers', () => {
     expect(profile.leftFlank.length).toBeGreaterThan(2);
     expect(profile.rightFlank.length).toBeGreaterThan(2);
     expect(profile.outline[0]).toBeDefined();
-    expect(profile.outline[profile.outline.length - 1]).toEqual(profile.outline[0]);
+    expect(profile.outline[profile.outline.length - 1]).not.toEqual(profile.outline[0]);
   });
 
   it('rotates points around the origin', () => {

@@ -67,6 +67,7 @@ export default function GearPreview({ mesh }: GearPreviewProps) {
       metalness: 0.18,
       roughness: 0.35,
       flatShading: false,
+      side: THREE.DoubleSide,
     });
     const previewMesh = new THREE.Mesh(geometry, meshMaterial);
     scene.add(previewMesh);
