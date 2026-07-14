@@ -31,8 +31,19 @@ function involutePoint(baseRadius: number, t: number): Point2D {
   return polarToCartesian(radius, angle);
 }
 
+function involuteParameterAtRadius(baseRadius: number, radius: number): number {
+  const ratio = radius / baseRadius;
+  return Math.sqrt(Math.max(0, ratio * ratio - 1));
+}
+
 function mirrorPoint(point: Point2D): Point2D {
   return [point[0], -point[1]];
+}
+
+function rotatePoint([x, y]: Point2D, angle: number): Point2D {
+  const cosAngle = Math.cos(angle);
+  const sinAngle = Math.sin(angle);
+  return [x * cosAngle - y * sinAngle, x * sinAngle + y * cosAngle];
 }
 
 function closePoints(points: Point2D[]): Point2D[] {
@@ -62,64 +73,6 @@ function sampleRange(start: number, end: number, sampleCount: number): number[] 
   return values;
 }
 
-export function getInvoluteToothProfile(
-  params: Pick<GearParams, 'module' | 'teeth' | 'pressure_angle' | 'resolution'>,
-  metrics: Pick<GearMetrics, 'pitch_radius' | 'base_circle_radius' | 'tip_radius' | 'root_radius'>,
-  options: GeometryProfileOptions = {},
-): ToothProfile {
-  const sampleCount = options.sampleCount ?? Math.max(48, params.resolution);
-  const pitchAngle = Math.PI / params.teeth;
-  const pitchBaseRatio = metrics.pitch_radius / metrics.base_circle_radius;
-  const tipBaseRatio = metrics.tip_radius / metrics.base_circle_radius;
-  const pitchInvolute = Math.sqrt(Math.max(0, pitchBaseRatio * pitchBaseRatio - 1));
-  const tipInvolute = Math.sqrt(Math.max(0, tipBaseRatio * tipBaseRatio - 1));
-  const toothOffset = pitchAngle / 2 - involuteFunction(pitchInvolute);
-  const flankSamples = sampleRange(0, tipInvolute, sampleCount).map((t) => {
-    const [x, y] = involutePoint(metrics.base_circle_radius, t);
-    return [x * Math.cos(toothOffset) - y * Math.sin(toothOffset), x * Math.sin(toothOffset) + y * Math.cos(toothOffset)] as Point2D;
-  });
-
-  const rightFlank = flankSamples;
-  const leftFlank = flankSamples.map(mirrorPoint).reverse();
-  const tipArcStart = leftFlank[leftFlank.length - 1] ?? [metrics.tip_radius, 0];
-  const tipArcEnd = rightFlank[rightFlank.length - 1] ?? [metrics.tip_radius, 0];
-  const tipArcStartAngle = Math.atan2(tipArcStart[1], tipArcStart[0]);
-  const tipArcEndAngle = Math.atan2(tipArcEnd[1], tipArcEnd[0]);
-  const tipArcSamples = sampleRange(tipArcStartAngle, tipArcEndAngle, Math.max(8, Math.round(sampleCount / 2))).map((angle) =>
-    polarToCartesian(metrics.tip_radius, angle),
-  );
-
-  const rootLeft = polarToCartesian(metrics.root_radius, -pitchAngle / 2);
-  const rootRight = polarToCartesian(metrics.root_radius, pitchAngle / 2);
-  const outline = closePoints([rootLeft, ...leftFlank, ...tipArcSamples, ...rightFlank.slice(1), rootRight]);
-
-  return {
-    leftFlank,
-    rightFlank,
-    outline,
-  };
-}
-
-export function rotatePoints(points: Point2D[], angle: number): Point2D[] {
-  const cosAngle = Math.cos(angle);
-  const sinAngle = Math.sin(angle);
-  return points.map(([x, y]) => [x * cosAngle - y * sinAngle, x * sinAngle + y * cosAngle]);
-}
-
-export function buildGearToothOutlines(
-  params: Pick<GearParams, 'teeth'>,
-  profile: ToothProfile,
-): Point2D[][] {
-  const outlines: Point2D[][] = [];
-  const toothPitch = (Math.PI * 2) / params.teeth;
-
-  for (let toothIndex = 0; toothIndex < params.teeth; toothIndex += 1) {
-    outlines.push(rotatePoints(profile.outline, toothIndex * toothPitch));
-  }
-
-  return outlines;
-}
-
 function normalizeAngle(angle: number): number {
   const twoPi = Math.PI * 2;
   let normalized = angle % twoPi;
@@ -137,16 +90,105 @@ function pointAngle(point: Point2D): number {
   return normalizeAngle(Math.atan2(point[1], point[0]));
 }
 
-function sampleOutlineAngles(teeth: number, sampleCount: number): number[] {
-  const totalSamples = Math.max(teeth, sampleCount, 24);
-  const step = (Math.PI * 2) / totalSamples;
-  const angles: number[] = [];
-
-  for (let index = 0; index < totalSamples; index += 1) {
-    angles.push(index * step);
+// Samples the root-circle arc strictly between two points, excluding both
+// endpoints (the caller already has those from the adjacent tooth outlines).
+function sampleArc(start: Point2D, end: Point2D, segments: number): Point2D[] {
+  const radius = (pointRadius(start) + pointRadius(end)) / 2;
+  const startAngle = pointAngle(start);
+  let endAngle = pointAngle(end);
+  if (endAngle <= startAngle) {
+    endAngle += Math.PI * 2;
   }
 
-  return angles;
+  const points: Point2D[] = [];
+  for (let index = 1; index < segments; index += 1) {
+    const angle = startAngle + ((endAngle - startAngle) * index) / segments;
+    points.push(polarToCartesian(radius, angle));
+  }
+  return points;
+}
+
+function appendPoints(target: Point2D[], points: Point2D[]): void {
+  const epsilon = 1e-6;
+  for (const point of points) {
+    const last = target[target.length - 1];
+    if (!last || Math.abs(last[0] - point[0]) > epsilon || Math.abs(last[1] - point[1]) > epsilon) {
+      target.push(point);
+    }
+  }
+}
+
+export function getInvoluteToothProfile(
+  params: Pick<GearParams, 'module' | 'teeth' | 'pressure_angle' | 'resolution'>,
+  metrics: Pick<GearMetrics, 'pitch_radius' | 'base_circle_radius' | 'tip_radius' | 'root_radius'>,
+  options: GeometryProfileOptions = {},
+): ToothProfile {
+  const sampleCount = Math.max(4, options.sampleCount ?? Math.max(48, params.resolution));
+  const halfToothThickness = Math.PI / (2 * params.teeth);
+  const baseRadius = metrics.base_circle_radius;
+
+  // The involute is only defined outside the base circle. If the root sits
+  // inside the base circle, the flank starts at the base circle and a
+  // straight radial line fills in down to the root circle.
+  const flankStartRadius = Math.max(baseRadius, metrics.root_radius);
+  const pitchT = involuteParameterAtRadius(baseRadius, metrics.pitch_radius);
+  const startT = involuteParameterAtRadius(baseRadius, flankStartRadius);
+  const tipT = Math.max(involuteParameterAtRadius(baseRadius, metrics.tip_radius), startT);
+
+  // Rotates the involute curve so it crosses the pitch circle at half the
+  // tooth's angular thickness from the tooth centreline.
+  const toothOffset = halfToothThickness - involuteFunction(pitchT);
+
+  const flankSamples = sampleRange(startT, tipT, sampleCount).map((t) =>
+    rotatePoint(involutePoint(baseRadius, t), toothOffset),
+  );
+
+  const rightFlank: Point2D[] =
+    metrics.root_radius < baseRadius
+      ? [polarToCartesian(metrics.root_radius, pointAngle(flankSamples[0])), ...flankSamples]
+      : flankSamples;
+
+  // Mirroring and reversing turns the root-to-tip right flank into a
+  // tip-to-root left flank on the opposite side of the tooth centreline.
+  const leftFlank = rightFlank.map(mirrorPoint).reverse();
+
+  const tipArcStart = leftFlank[0];
+  const tipArcEnd = rightFlank[rightFlank.length - 1];
+  const tipArc = sampleArc(tipArcStart, tipArcEnd, Math.max(2, Math.round(sampleCount / 4)));
+
+  // Single continuous tooth silhouette: left root -> left flank -> tip arc
+  // -> right flank -> right root. Left deliberately open (not closed into
+  // its own polygon) so buildGearOutline can stitch teeth together through
+  // the root circle between them.
+  const outline: Point2D[] = [
+    ...leftFlank.slice().reverse(),
+    ...tipArc,
+    ...rightFlank.slice().reverse(),
+  ];
+
+  return {
+    leftFlank,
+    rightFlank,
+    outline,
+  };
+}
+
+export function rotatePoints(points: Point2D[], angle: number): Point2D[] {
+  return points.map((point) => rotatePoint(point, angle));
+}
+
+export function buildGearToothOutlines(
+  params: Pick<GearParams, 'teeth'>,
+  profile: ToothProfile,
+): Point2D[][] {
+  const outlines: Point2D[][] = [];
+  const toothPitch = (Math.PI * 2) / params.teeth;
+
+  for (let toothIndex = 0; toothIndex < params.teeth; toothIndex += 1) {
+    outlines.push(rotatePoints(profile.outline, toothIndex * toothPitch));
+  }
+
+  return outlines;
 }
 
 export function buildGearOutline(
@@ -155,23 +197,22 @@ export function buildGearOutline(
   options: GearOutlineOptions = {},
   minimumRadius = 0,
 ): Point2D[] {
+  void params;
+  void minimumRadius; // retained for call-site compatibility; not needed by the corrected algorithm
+
+  const arcSegments = Math.max(2, options.outlineSampleCount ?? 6);
   const outline: Point2D[] = [];
 
-  for (const toothOutline of toothOutlines) {
-    const cleaned = toothOutline.slice(0, -1);
-    for (const point of cleaned) {
-      if (pointRadius(point) >= minimumRadius || outline.length === 0) {
-        const lastPoint = outline[outline.length - 1];
-        if (!lastPoint || lastPoint[0] !== point[0] || lastPoint[1] !== point[1]) {
-          outline.push(point);
-        }
-      }
-    }
+  for (let toothIndex = 0; toothIndex < toothOutlines.length; toothIndex += 1) {
+    const currentTooth = toothOutlines[toothIndex];
+    const nextTooth = toothOutlines[(toothIndex + 1) % toothOutlines.length];
+
+    appendPoints(outline, currentTooth);
+
+    const rootArcStart = currentTooth[currentTooth.length - 1];
+    const rootArcEnd = nextTooth[0];
+    appendPoints(outline, sampleArc(rootArcStart, rootArcEnd, arcSegments));
   }
 
-  if (outline.length > 0) {
-    outline.push(outline[0]);
-  }
-
-  return outline;
+  return closePoints(outline);
 }
