@@ -1,6 +1,23 @@
 import type { GearParams } from './gear';
 
-export type GearMetrics = {
+export type GearMetricsRaw = {
+  pitch_radius: number;
+  tip_radius: number;
+  root_radius: number;
+  base_circle_radius: number;
+  pitch_diameter: number;
+  tip_diameter: number;
+  root_diameter: number;
+  base_circle_diameter: number;
+  circular_pitch: number;
+  addendum: number;
+  dedendum: number;
+  clearance: number;
+};
+
+export type GearMetrics = GearMetricsRaw;
+
+export type GearMetricsDisplay = {
   pitch_radius: number;
   tip_radius: number;
   root_radius: number;
@@ -48,6 +65,23 @@ export function calculateGearMetrics(params: Pick<GearParams, 'module' | 'teeth'
     addendum: round3(addendum),
     dedendum: round3(dedendum),
     clearance: round3(dedendum - addendum),
+  };
+}
+
+export function formatGearMetrics(metrics: GearMetricsRaw): GearMetricsDisplay {
+  return {
+    pitch_radius: round3(metrics.pitch_radius),
+    tip_radius: round3(metrics.tip_radius),
+    root_radius: round3(metrics.root_radius),
+    base_circle_radius: round3(metrics.base_circle_radius),
+    pitch_diameter: round3(metrics.pitch_diameter),
+    tip_diameter: round3(metrics.tip_diameter),
+    root_diameter: round3(metrics.root_diameter),
+    base_circle_diameter: round3(metrics.base_circle_diameter),
+    circular_pitch: round3(metrics.circular_pitch),
+    addendum: round3(metrics.addendum),
+    dedendum: round3(metrics.dedendum),
+    clearance: round3(metrics.clearance),
   };
 }
 

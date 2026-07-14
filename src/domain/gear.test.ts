@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createGearParams, gearSchema } from './gear';
-import { calculateGearMetrics, toLegacyV1Metrics } from './gearMetrics';
+import { calculateGearMetrics, formatGearMetrics, toLegacyV1Metrics } from './gearMetrics';
 
 describe('gear schema', () => {
   it('fills the v1-compatible defaults', () => {
@@ -55,6 +55,18 @@ describe('gear metrics', () => {
     expect(metrics.root_diameter).toBeCloseTo(17.5, 3);
     expect(metrics.base_circle_diameter).toBeCloseTo(18.794, 3);
     expect(metrics.circular_pitch).toBeCloseTo(Math.PI, 3);
+  });
+
+  it('formats display metrics without changing the underlying values', () => {
+    const metrics = calculateGearMetrics({
+      module: 2.5,
+      teeth: 24,
+      pressure_angle: 20,
+    });
+
+    const displayMetrics = formatGearMetrics(metrics);
+
+    expect(displayMetrics).toEqual(metrics);
   });
 
   it('preserves the legacy v1 preview metric shape', () => {

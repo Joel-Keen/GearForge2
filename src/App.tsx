@@ -1,8 +1,9 @@
 import { createGearParams } from './domain';
-import { calculateGearMetrics, toLegacyV1Metrics } from './domain';
+import { calculateGearMetrics, formatGearMetrics, toLegacyV1Metrics } from './domain';
 
 const defaultParams = createGearParams();
 const defaultMetrics = calculateGearMetrics(defaultParams);
+const displayMetrics = formatGearMetrics(defaultMetrics);
 const legacyMetrics = toLegacyV1Metrics(defaultParams);
 
 export default function App() {
@@ -26,6 +27,11 @@ export default function App() {
         <article className="card">
           <h2>Derived metrics</h2>
           <pre>{JSON.stringify(defaultMetrics, null, 2)}</pre>
+        </article>
+
+        <article className="card">
+          <h2>Display metrics</h2>
+          <pre>{JSON.stringify(displayMetrics, null, 2)}</pre>
         </article>
 
         <article className="card">
