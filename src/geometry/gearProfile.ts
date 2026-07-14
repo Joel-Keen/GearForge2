@@ -63,11 +63,11 @@ function sampleRange(start: number, end: number, sampleCount: number): number[] 
 }
 
 export function getInvoluteToothProfile(
-  params: Pick<GearParams, 'module' | 'teeth' | 'pressure_angle'>,
+  params: Pick<GearParams, 'module' | 'teeth' | 'pressure_angle' | 'resolution'>,
   metrics: Pick<GearMetrics, 'pitch_radius' | 'base_circle_radius' | 'tip_radius' | 'root_radius'>,
   options: GeometryProfileOptions = {},
 ): ToothProfile {
-  const sampleCount = options.sampleCount ?? 12;
+  const sampleCount = options.sampleCount ?? Math.max(48, params.resolution);
   const pitchAngle = Math.PI / params.teeth;
   const pitchBaseRatio = metrics.pitch_radius / metrics.base_circle_radius;
   const tipBaseRatio = metrics.tip_radius / metrics.base_circle_radius;
@@ -85,7 +85,7 @@ export function getInvoluteToothProfile(
   const tipArcEnd = rightFlank[rightFlank.length - 1] ?? [metrics.tip_radius, 0];
   const tipArcStartAngle = Math.atan2(tipArcStart[1], tipArcStart[0]);
   const tipArcEndAngle = Math.atan2(tipArcEnd[1], tipArcEnd[0]);
-  const tipArcSamples = sampleRange(tipArcStartAngle, tipArcEndAngle, Math.max(2, sampleCount / 2)).map((angle) =>
+  const tipArcSamples = sampleRange(tipArcStartAngle, tipArcEndAngle, Math.max(8, Math.round(sampleCount / 2))).map((angle) =>
     polarToCartesian(metrics.tip_radius, angle),
   );
 
@@ -138,7 +138,7 @@ function pointAngle(point: Point2D): number {
 }
 
 function sampleOutlineAngles(teeth: number, sampleCount: number): number[] {
-  const totalSamples = Math.max(teeth * 12, sampleCount, 24);
+  const totalSamples = Math.max(teeth, sampleCount, 24);
   const step = (Math.PI * 2) / totalSamples;
   const angles: number[] = [];
 
@@ -149,41 +149,24 @@ function sampleOutlineAngles(teeth: number, sampleCount: number): number[] {
   return angles;
 }
 
-function bestRadiusAtAngle(outlines: Point2D[][], angle: number, minimumRadius: number): number {
-  let bestRadius = minimumRadius;
-  let bestDistance = Number.POSITIVE_INFINITY;
-
-  for (const outline of outlines) {
-    for (const point of outline) {
-      const pointAngleValue = pointAngle(point);
-      const angleDistance = Math.min(
-        Math.abs(pointAngleValue - angle),
-        Math.PI * 2 - Math.abs(pointAngleValue - angle),
-      );
-      if (angleDistance < bestDistance) {
-        bestDistance = angleDistance;
-        const radius = pointRadius(point);
-        bestRadius = Math.max(minimumRadius, radius);
-      }
-    }
-  }
-
-  return bestRadius;
-}
-
 export function buildGearOutline(
   params: Pick<GearParams, 'teeth'>,
   toothOutlines: Point2D[][],
   options: GearOutlineOptions = {},
   minimumRadius = 0,
 ): Point2D[] {
-  const sampleCount = options.outlineSampleCount ?? 240;
-  const outlineAngles = sampleOutlineAngles(params.teeth, sampleCount);
   const outline: Point2D[] = [];
 
-  for (const angle of outlineAngles) {
-    const radius = bestRadiusAtAngle(toothOutlines, angle, minimumRadius);
-    outline.push([radius * Math.cos(angle), radius * Math.sin(angle)]);
+  for (const toothOutline of toothOutlines) {
+    const cleaned = toothOutline.slice(0, -1);
+    for (const point of cleaned) {
+      if (pointRadius(point) >= minimumRadius || outline.length === 0) {
+        const lastPoint = outline[outline.length - 1];
+        if (!lastPoint || lastPoint[0] !== point[0] || lastPoint[1] !== point[1]) {
+          outline.push(point);
+        }
+      }
+    }
   }
 
   if (outline.length > 0) {

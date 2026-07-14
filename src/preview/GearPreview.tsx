@@ -24,7 +24,7 @@ function fitCameraToMesh(camera: THREE.PerspectiveCamera, mesh: SolidMesh): void
   const maxDimension = Math.max(size.x, size.y, size.z, 1);
   const distance = maxDimension * 1.8;
 
-  camera.position.set(distance, distance * 0.8, distance);
+  camera.position.set(distance * 0.12, distance * 0.08, distance * 2.2);
   camera.lookAt(center);
 }
 
