@@ -30,7 +30,7 @@ The core, highest-risk item:
 
 Validate dimensionally against existing STL output (bounding box, hole positions, tooth count) before moving on.
 
-## Phase 3 Implementation Notes
+#### Stage 3 Implementation Notes
 
 Phase 3 should begin with a pure geometry layer that stays separate from rendering and STL export. The first code slice should be small enough to validate in isolation, but structured so later steps can reuse the same geometry primitives.
 
@@ -54,13 +54,15 @@ Phase 3 should begin with a pure geometry layer that stays separate from renderi
 	- Keep the new helpers testable without browser APIs or Three.js runtime objects.
 	- Use this boundary to unblock the later extrusion and boolean stages.
 
+#### Stage 3 Implementation    
+
 ### 4. Port the engrave-name logic
 
 Convert font outlines with `opentype.js`, extrude with `THREE.ExtrudeGeometry`, then CSG-union (embossed) or CSG-subtract (engraved) onto the gear solid, matching the current SCAD behaviour.
 
 ### 5. Preview
 
-Render the same `BufferGeometry` used for export directly in a `@react-three/fiber` (or plain Three.js) canvas. This removes the need for a separate preview-mesh endpoint or triangle-parsing step, since geometry lives in-browser from the start – a deliberate simplification versus v1.
+Remember to deprecate the old preview. Need to build the Github pages app at this point. Render the same `BufferGeometry` used for export directly in a `@react-three/fiber` (or plain Three.js) canvas. This removes the need for a separate preview-mesh endpoint or triangle-parsing step, since geometry lives in-browser from the start – a deliberate simplification versus v1.
 
 ### 6. Single STL export
 
