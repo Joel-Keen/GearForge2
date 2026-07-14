@@ -1,15 +1,73 @@
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import type { SolidMesh } from '../geometry';
-import { getSolidBounds } from '../geometry';
-import { solidMeshToBufferGeometry } from './solidToBufferGeometry';
+import type { GearMetrics, GearParams } from '../domain';
+import type { GearSolid, Point2D } from '../geometry';
+import { buildGearOutline, buildGearPreviewCutoutLoops, buildGearToothOutlines, getInvoluteToothProfile, getSolidBounds } from '../geometry';
 
 export type GearPreviewProps = {
-  mesh: SolidMesh;
+  mesh: GearSolid;
+  params: GearParams;
+  metrics: GearMetrics;
 };
 
-function fitCameraToMesh(camera: THREE.PerspectiveCamera, mesh: SolidMesh): void {
+function buildOutlineShape(outline: Point2D[]): THREE.Shape {
+  if (outline.length === 0) {
+    throw new Error('Preview outline requires at least one point');
+  }
+
+  const shape = new THREE.Shape();
+  shape.moveTo(outline[0][0], outline[0][1]);
+  for (let index = 1; index < outline.length; index += 1) {
+    shape.lineTo(outline[index][0], outline[index][1]);
+  }
+  shape.closePath();
+  return shape;
+}
+
+function buildPreviewGeometry(params: GearParams, metrics: GearMetrics, mesh: GearSolid): THREE.BufferGeometry {
+  const profile = getInvoluteToothProfile(params, metrics);
+  const toothOutlines = buildGearToothOutlines(params, profile);
+  const outline = buildGearOutline(params, toothOutlines, {}, metrics.root_radius);
+  const shape = buildOutlineShape(outline);
+  const cutoutLoops = buildGearPreviewCutoutLoops(mesh.cutouts, Math.max(24, Math.round(params.resolution / 2)));
+
+  for (const cutout of cutoutLoops) {
+    if (cutout.kind === 'keyway') {
+      const [firstPoint, ...restPoints] = cutout.points;
+      const hole = new THREE.Path();
+      hole.moveTo(firstPoint[0], firstPoint[1]);
+      for (const [x, y] of restPoints) {
+        hole.lineTo(x, y);
+      }
+      hole.closePath();
+      shape.holes.push(hole);
+      continue;
+    }
+
+    if (cutout.radius == null) {
+      throw new Error('Circular preview cutout requires a radius');
+    }
+
+    const hole = new THREE.Path();
+    hole.absarc(cutout.center[0], cutout.center[1], cutout.radius, 0, Math.PI * 2, true);
+    shape.holes.push(hole);
+  }
+
+  const geometry = new THREE.ExtrudeGeometry(shape, {
+    depth: mesh.thickness,
+    bevelEnabled: false,
+    curveSegments: Math.max(12, Math.round(params.resolution / 4)),
+    steps: 1,
+  });
+  geometry.translate(0, 0, -mesh.thickness / 2);
+  geometry.computeVertexNormals();
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
+function fitCameraToMesh(camera: THREE.PerspectiveCamera, mesh: GearSolid): void {
   const bounds = getSolidBounds(mesh);
   const size = new THREE.Vector3(
     bounds.max[0] - bounds.min[0],
@@ -28,9 +86,9 @@ function fitCameraToMesh(camera: THREE.PerspectiveCamera, mesh: SolidMesh): void
   camera.lookAt(center);
 }
 
-export default function GearPreview({ mesh }: GearPreviewProps) {
+export default function GearPreview({ mesh, params, metrics }: GearPreviewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const geometry = useMemo(() => solidMeshToBufferGeometry(mesh), [mesh]);
+  const geometry = useMemo(() => buildPreviewGeometry(params, metrics, mesh), [mesh, metrics, params]);
 
   useEffect(() => {
     const container = containerRef.current;

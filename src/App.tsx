@@ -101,7 +101,7 @@ export default function App() {
               <span>{solid.cutouts.length} cutouts</span>
             </div>
           </div>
-          <GearPreview mesh={solid} />
+          <GearPreview mesh={solid} params={params} metrics={metrics} />
         </section>
       </section>
 

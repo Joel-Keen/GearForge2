@@ -2,6 +2,8 @@ export { buildGearOutline, buildGearToothOutlines, getInvoluteToothProfile, rota
 export type { GearOutlineOptions, GeometryProfileOptions, Point2D, ToothProfile } from './gearProfile';
 export { buildGearCutouts, countGearCutouts } from './gearCutouts';
 export type { BoreCutout, GearCutout, KeywayCutout, PinHoleCutout } from './gearCutouts';
+export { buildGearPreviewCutoutLoops } from './gearPreviewCutouts';
+export type { GearPreviewCutoutLoop } from './gearPreviewCutouts';
 export { buildGearSolid } from './gearSolidBuilder';
 export type { GearSolid } from './gearSolidBuilder';
 export { extrudeOutlineToSolid, getSolidBounds } from './gearSolid';
