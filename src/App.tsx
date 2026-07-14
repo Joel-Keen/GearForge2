@@ -20,6 +20,8 @@ export default function App() {
   const [keywayed, setKeywayed] = useState(defaultParams.keywayed);
   const [pinned, setPinned] = useState(defaultParams.pinned);
   const [pinNumber, setPinNumber] = useState(defaultParams.pin_number);
+  const [pinPcd, setPinPcd] = useState(defaultParams.pin_pcd);
+  const [pinDiameter, setPinDiameter] = useState(defaultParams.pin_diameter);
 
   const params = useMemo(
     () =>
@@ -32,8 +34,10 @@ export default function App() {
         keywayed,
         pinned,
         pin_number: pinNumber,
+        pin_pcd: pinPcd,
+        pin_diameter: pinDiameter,
       }),
-    [moduleValue, teeth, faceWidth, pressureAngle, boreDiameter, keywayed, pinned, pinNumber],
+    [moduleValue, teeth, faceWidth, pressureAngle, boreDiameter, keywayed, pinned, pinNumber, pinPcd, pinDiameter],
   );
 
   const metrics = useMemo(() => calculateGearMetrics(params), [params]);
@@ -83,10 +87,22 @@ export default function App() {
             <input type="checkbox" checked={pinned} onChange={(event) => setPinned(event.currentTarget.checked)} />
             Pinned
           </label>
-          <label>
-            Pin number
-            <input type="number" min="1" max="8" step="1" value={pinNumber} onChange={(event) => setPinNumber(Math.max(1, Math.min(8, Math.round(parseNumber(event.currentTarget.value)))))} />
-          </label>
+          {pinned && (
+            <>
+              <label>
+                Pin number
+                <input type="number" min="1" max="8" step="1" value={pinNumber} onChange={(event) => setPinNumber(Math.max(1, Math.min(8, Math.round(parseNumber(event.currentTarget.value)))))} />
+              </label>
+              <label>
+                Pin PCD
+                <input type="number" min="0.1" step="0.1" value={pinPcd} onChange={(event) => setPinPcd(Math.max(0.1, parseNumber(event.currentTarget.value)))} />
+              </label>
+              <label>
+                Pin hole diameter
+                <input type="number" min="0.1" step="0.1" value={pinDiameter} onChange={(event) => setPinDiameter(Math.max(0.1, parseNumber(event.currentTarget.value)))} />
+              </label>
+            </>
+          )}
         </aside>
 
         <section className="viewport card">

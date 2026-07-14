@@ -55,8 +55,8 @@ export function buildGearCutouts(params: GearParams, metrics: Pick<GearMetrics, 
     cutouts.push({
       kind: 'keyway',
       width: params.key_width,
-      depth: params.key_depth,
-      center: [0, metrics.root_radius / 2],
+      depth: params.key_depth * 2,
+      center: [0, params.bore_diameter * 0.5],
       zMin,
       zMax,
     });
