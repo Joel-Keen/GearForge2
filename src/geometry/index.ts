@@ -1,4 +1,8 @@
 export { buildGearOutline, buildGearToothOutlines, getInvoluteToothProfile, rotatePoints } from './gearProfile';
 export type { GearOutlineOptions, GeometryProfileOptions, Point2D, ToothProfile } from './gearProfile';
+export { buildGearCutouts, countGearCutouts } from './gearCutouts';
+export type { BoreCutout, GearCutout, KeywayCutout, PinHoleCutout } from './gearCutouts';
+export { buildGearSolid } from './gearSolidBuilder';
+export type { GearSolid } from './gearSolidBuilder';
 export { extrudeOutlineToSolid, getSolidBounds } from './gearSolid';
 export type { Point3D, SolidMesh, Triangle } from './gearSolid';
