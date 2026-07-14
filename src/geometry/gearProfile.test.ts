@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createGearParams, calculateGearMetrics } from '../domain';
 import { buildGearOutline, buildGearToothOutlines, getInvoluteToothProfile, rotatePoints } from './gearProfile';
+import { extrudeOutlineToSolid, getSolidBounds } from './gearSolid';
 
 describe('gear profile helpers', () => {
   it('creates a symmetric involute tooth profile', () => {
@@ -43,5 +44,21 @@ describe('gear profile helpers', () => {
     const radii = outline.map(([x, y]) => Math.hypot(x, y));
     expect(Math.max(...radii)).toBeCloseTo(metrics.tip_radius, 1);
     expect(Math.min(...radii)).toBeGreaterThanOrEqual(metrics.root_radius - 0.5);
+  });
+
+  it('extrudes the outline into a centered solid mesh', () => {
+    const params = createGearParams({ module: 1, teeth: 20, face_width: 12.7 });
+    const metrics = calculateGearMetrics(params);
+    const profile = getInvoluteToothProfile(params, metrics);
+    const outlines = buildGearToothOutlines(params, profile);
+    const outline = buildGearOutline(params, outlines, {}, metrics.root_radius);
+    const solid = extrudeOutlineToSolid(outline, params.face_width);
+    const bounds = getSolidBounds(solid);
+
+    expect(solid.vertices).toHaveLength(solid.outline.length * 2);
+    expect(solid.triangles.length).toBeGreaterThan(outline.length);
+    expect(bounds.min[2]).toBeCloseTo(-params.face_width / 2, 6);
+    expect(bounds.max[2]).toBeCloseTo(params.face_width / 2, 6);
+    expect(bounds.max[0]).toBeCloseTo(metrics.tip_radius, 1);
   });
 });

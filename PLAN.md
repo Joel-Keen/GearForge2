@@ -30,6 +30,30 @@ The core, highest-risk item:
 
 Validate dimensionally against existing STL output (bounding box, hole positions, tooth count) before moving on.
 
+## Phase 3 Implementation Notes
+
+Phase 3 should begin with a pure geometry layer that stays separate from rendering and STL export. The first code slice should be small enough to validate in isolation, but structured so later steps can reuse the same geometry primitives.
+
+1. Create a dedicated `src/geometry/` module family.
+	- Keep tooth-profile generation, outline construction, extrusion prep, and cutout helpers separate.
+	- Consume `GearParams` and `GearMetrics` only through the shared domain layer.
+	- Avoid React, Three.js scene code, and STL export in this first slice.
+
+2. Implement the involute tooth profile first.
+	- Generate a single tooth flank from the base circle up to the addendum circle.
+	- Mirror it to create a closed tooth profile with predictable symmetry.
+	- Parameterize the sampling density so later geometry quality tuning does not require a rewrite.
+
+3. Add a deterministic outline builder next.
+	- Assemble per-tooth geometry in a way that can later be unioned or extruded.
+	- Keep root radius, addendum radius, and tooth pitch relationships explicit.
+	- Make the output suitable for regression tests against known reference gears.
+
+4. Validate the first slice before adding cutouts.
+	- Check symmetry, radii, and tooth spacing for a simple known gear.
+	- Keep the new helpers testable without browser APIs or Three.js runtime objects.
+	- Use this boundary to unblock the later extrusion and boolean stages.
+
 ### 4. Port the engrave-name logic
 
 Convert font outlines with `opentype.js`, extrude with `THREE.ExtrudeGeometry`, then CSG-union (embossed) or CSG-subtract (engraved) onto the gear solid, matching the current SCAD behaviour.
@@ -110,26 +134,3 @@ No folder picker, no local file writes. Replace with:
 
 Steps 2 to 4 carry the most technical uncertainty and are worth timeboxing and validating early, before the rest of the UI is built on top of them.
 
-## Phase 3 Implementation Notes
-
-Phase 3 should begin with a pure geometry layer that stays separate from rendering and STL export. The first code slice should be small enough to validate in isolation, but structured so later steps can reuse the same geometry primitives.
-
-1. Create a dedicated `src/geometry/` module family.
-	- Keep tooth-profile generation, outline construction, extrusion prep, and cutout helpers separate.
-	- Consume `GearParams` and `GearMetrics` only through the shared domain layer.
-	- Avoid React, Three.js scene code, and STL export in this first slice.
-
-2. Implement the involute tooth profile first.
-	- Generate a single tooth flank from the base circle up to the addendum circle.
-	- Mirror it to create a closed tooth profile with predictable symmetry.
-	- Parameterize the sampling density so later geometry quality tuning does not require a rewrite.
-
-3. Add a deterministic outline builder next.
-	- Assemble per-tooth geometry in a way that can later be unioned or extruded.
-	- Keep root radius, addendum radius, and tooth pitch relationships explicit.
-	- Make the output suitable for regression tests against known reference gears.
-
-4. Validate the first slice before adding cutouts.
-	- Check symmetry, radii, and tooth spacing for a simple known gear.
-	- Keep the new helpers testable without browser APIs or Three.js runtime objects.
-	- Use this boundary to unblock the later extrusion and boolean stages.
