@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createGearParams, calculateGearMetrics } from '../domain';
-import { buildGearToothOutlines, getInvoluteToothProfile, rotatePoints } from './gearProfile';
+import { buildGearOutline, buildGearToothOutlines, getInvoluteToothProfile, rotatePoints } from './gearProfile';
 
 describe('gear profile helpers', () => {
   it('creates a symmetric involute tooth profile', () => {
@@ -29,5 +29,19 @@ describe('gear profile helpers', () => {
     expect(outlines).toHaveLength(12);
     expect(outlines[0][0]).toBeDefined();
     expect(outlines[1][0]).toBeDefined();
+  });
+
+  it('builds a closed outline envelope from tooth outlines', () => {
+    const params = createGearParams({ module: 1, teeth: 20, face_width: 10 });
+    const metrics = calculateGearMetrics(params);
+    const profile = getInvoluteToothProfile(params, metrics);
+    const outlines = buildGearToothOutlines(params, profile);
+    const outline = buildGearOutline(params, outlines, {}, metrics.root_radius);
+
+    expect(outline.length).toBeGreaterThan(20);
+    expect(outline[0]).toEqual(outline[outline.length - 1]);
+    const radii = outline.map(([x, y]) => Math.hypot(x, y));
+    expect(Math.max(...radii)).toBeCloseTo(metrics.tip_radius, 1);
+    expect(Math.min(...radii)).toBeGreaterThanOrEqual(metrics.root_radius - 0.5);
   });
 });

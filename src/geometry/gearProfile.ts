@@ -13,6 +13,10 @@ export type GeometryProfileOptions = {
   sampleCount?: number;
 };
 
+export type GearOutlineOptions = {
+  outlineSampleCount?: number;
+};
+
 function polarToCartesian(radius: number, angle: number): Point2D {
   return [radius * Math.cos(angle), radius * Math.sin(angle)];
 }
@@ -114,4 +118,77 @@ export function buildGearToothOutlines(
   }
 
   return outlines;
+}
+
+function normalizeAngle(angle: number): number {
+  const twoPi = Math.PI * 2;
+  let normalized = angle % twoPi;
+  if (normalized < 0) {
+    normalized += twoPi;
+  }
+  return normalized;
+}
+
+function pointRadius(point: Point2D): number {
+  return Math.hypot(point[0], point[1]);
+}
+
+function pointAngle(point: Point2D): number {
+  return normalizeAngle(Math.atan2(point[1], point[0]));
+}
+
+function sampleOutlineAngles(teeth: number, sampleCount: number): number[] {
+  const totalSamples = Math.max(teeth * 12, sampleCount, 24);
+  const step = (Math.PI * 2) / totalSamples;
+  const angles: number[] = [];
+
+  for (let index = 0; index < totalSamples; index += 1) {
+    angles.push(index * step);
+  }
+
+  return angles;
+}
+
+function bestRadiusAtAngle(outlines: Point2D[][], angle: number, minimumRadius: number): number {
+  let bestRadius = minimumRadius;
+  let bestDistance = Number.POSITIVE_INFINITY;
+
+  for (const outline of outlines) {
+    for (const point of outline) {
+      const pointAngleValue = pointAngle(point);
+      const angleDistance = Math.min(
+        Math.abs(pointAngleValue - angle),
+        Math.PI * 2 - Math.abs(pointAngleValue - angle),
+      );
+      if (angleDistance < bestDistance) {
+        bestDistance = angleDistance;
+        const radius = pointRadius(point);
+        bestRadius = Math.max(minimumRadius, radius);
+      }
+    }
+  }
+
+  return bestRadius;
+}
+
+export function buildGearOutline(
+  params: Pick<GearParams, 'teeth'>,
+  toothOutlines: Point2D[][],
+  options: GearOutlineOptions = {},
+  minimumRadius = 0,
+): Point2D[] {
+  const sampleCount = options.outlineSampleCount ?? 240;
+  const outlineAngles = sampleOutlineAngles(params.teeth, sampleCount);
+  const outline: Point2D[] = [];
+
+  for (const angle of outlineAngles) {
+    const radius = bestRadiusAtAngle(toothOutlines, angle, minimumRadius);
+    outline.push([radius * Math.cos(angle), radius * Math.sin(angle)]);
+  }
+
+  if (outline.length > 0) {
+    outline.push(outline[0]);
+  }
+
+  return outline;
 }

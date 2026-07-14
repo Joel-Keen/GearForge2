@@ -1,2 +1,2 @@
-export { buildGearToothOutlines, getInvoluteToothProfile, rotatePoints } from './gearProfile';
-export type { GeometryProfileOptions, Point2D, ToothProfile } from './gearProfile';
+export { buildGearOutline, buildGearToothOutlines, getInvoluteToothProfile, rotatePoints } from './gearProfile';
+export type { GearOutlineOptions, GeometryProfileOptions, Point2D, ToothProfile } from './gearProfile';
