@@ -135,12 +135,15 @@ export function getInvoluteToothProfile(
   const startT = involuteParameterAtRadius(baseRadius, flankStartRadius);
   const tipT = Math.max(involuteParameterAtRadius(baseRadius, metrics.tip_radius), startT);
 
-  // Rotates the involute curve so it crosses the pitch circle at half the
-  // tooth's angular thickness from the tooth centreline.
-  const toothOffset = halfToothThickness - involuteFunction(pitchT);
+  // Standard involute tooth-thickness relation: angular half-thickness at
+  // radius r = half-thickness at the pitch circle + inv(pressure angle at
+  // pitch) - inv(pressure angle at r). Angular thickness must shrink as
+  // radius grows, which is what makes the tooth taper to a point at the
+  // tip rather than flare outward and self-intersect with its neighbour.
+  const angleOffset = halfToothThickness + involuteFunction(pitchT);
 
   const flankSamples = sampleRange(startT, tipT, sampleCount).map((t) =>
-    rotatePoint(involutePoint(baseRadius, t), toothOffset),
+    rotatePoint(mirrorPoint(involutePoint(baseRadius, t)), angleOffset),
   );
 
   const rightFlank: Point2D[] =
@@ -148,20 +151,21 @@ export function getInvoluteToothProfile(
       ? [polarToCartesian(metrics.root_radius, pointAngle(flankSamples[0])), ...flankSamples]
       : flankSamples;
 
-  // Mirroring and reversing turns the root-to-tip right flank into a
-  // tip-to-root left flank on the opposite side of the tooth centreline.
-  const leftFlank = rightFlank.map(mirrorPoint).reverse();
+  // Mirroring about the tooth centreline gives the left flank, in the same
+  // root-to-tip order as the right flank.
+  const leftFlank = rightFlank.map(mirrorPoint);
 
-  const tipArcStart = leftFlank[0];
+  const tipArcStart = leftFlank[leftFlank.length - 1];
   const tipArcEnd = rightFlank[rightFlank.length - 1];
   const tipArc = sampleArc(tipArcStart, tipArcEnd, Math.max(2, Math.round(sampleCount / 4)));
 
   // Single continuous tooth silhouette: left root -> left flank -> tip arc
-  // -> right flank -> right root. Left deliberately open (not closed into
-  // its own polygon) so buildGearOutline can stitch teeth together through
-  // the root circle between them.
+  // -> right flank -> right root, with angle increasing monotonically
+  // throughout so the polygon cannot self-intersect. Left deliberately open
+  // (not closed into its own polygon) so buildGearOutline can stitch teeth
+  // together through the root circle between them.
   const outline: Point2D[] = [
-    ...leftFlank.slice().reverse(),
+    ...leftFlank,
     ...tipArc,
     ...rightFlank.slice().reverse(),
   ];
