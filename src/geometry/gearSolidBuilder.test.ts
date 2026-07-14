@@ -20,6 +20,8 @@ describe('gear solid builder', () => {
 
     expect(solid.cutouts).toHaveLength(4);
     expect(solid.cutoutCounts).toEqual({ bore: 1, keyway: 1, 'pin-hole': 2 });
+    const radii = solid.vertices.map(([x, y]) => Math.hypot(x, y));
+    expect(Math.min(...radii)).toBeCloseTo(params.bore_diameter / 2, 1);
     expect(bounds.min[2]).toBeCloseTo(-params.face_width / 2, 6);
     expect(bounds.max[2]).toBeCloseTo(params.face_width / 2, 6);
     expect(solid.vertices.length).toBeGreaterThan(0);

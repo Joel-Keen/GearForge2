@@ -58,6 +58,112 @@ function dedupeClosingPoint(points: Point2D[]): Point2D[] {
   return points;
 }
 
+function almostEqualPoint(a: Point2D, b: Point2D): boolean {
+  return a[0] === b[0] && a[1] === b[1];
+}
+
+function pushPoint(points: Point2D[], point: Point2D): void {
+  const lastPoint = points[points.length - 1];
+  if (!lastPoint || !almostEqualPoint(lastPoint, point)) {
+    points.push(point);
+  }
+}
+
+function makeCircleLoop(radius: number, segments: number): Point2D[] {
+  const loop: Point2D[] = [];
+  for (let index = 0; index < segments; index += 1) {
+    const angle = (Math.PI * 2 * index) / segments;
+    loop.push([radius * Math.cos(angle), radius * Math.sin(angle)]);
+  }
+  return loop;
+}
+
+function normalizeAngle(angle: number): number {
+  const twoPi = Math.PI * 2;
+  let normalized = angle % twoPi;
+  if (normalized < 0) {
+    normalized += twoPi;
+  }
+  return normalized;
+}
+
+function pointAngle(point: Point2D): number {
+  return normalizeAngle(Math.atan2(point[1], point[0]));
+}
+
+function pointDistance(a: Point2D, b: Point2D): number {
+  return Math.hypot(a[0] - b[0], a[1] - b[1]);
+}
+
+function findNearestAngleIndex(points: Point2D[], targetAngle: number): number {
+  let bestIndex = 0;
+  let bestDistance = Number.POSITIVE_INFINITY;
+
+  for (let index = 0; index < points.length; index += 1) {
+    const point = points[index];
+    const angle = pointAngle(point);
+    const distance = Math.min(Math.abs(angle - targetAngle), Math.PI * 2 - Math.abs(angle - targetAngle));
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestIndex = index;
+    }
+  }
+
+  return bestIndex;
+}
+
+function walkLoop(points: Point2D[], startIndex: number, endIndex: number, forward: boolean): Point2D[] {
+  const walked: Point2D[] = [];
+  const length = points.length;
+
+  if (length === 0) {
+    return walked;
+  }
+
+  let index = startIndex;
+  for (let guard = 0; guard < length; guard += 1) {
+    walked.push(points[index]);
+    if (index === endIndex) {
+      break;
+    }
+    index = forward ? (index + 1) % length : (index - 1 + length) % length;
+  }
+
+  return walked;
+}
+
+function buildPolygonWithCircularHole(
+  outerOutline: Point2D[],
+  holeRadius: number,
+  holeSegments: number,
+): Point2D[] {
+  const cleanOuter = dedupeClosingPoint(outerOutline);
+  const innerLoop = makeCircleLoop(holeRadius, Math.max(12, holeSegments));
+  const bridgeDelta = Math.PI / Math.max(12, holeSegments);
+  const outerStartIndex = findNearestAngleIndex(cleanOuter, 0);
+  const outerEndIndex = findNearestAngleIndex(cleanOuter, bridgeDelta);
+  const innerStartIndex = findNearestAngleIndex(innerLoop, bridgeDelta);
+  const innerEndIndex = findNearestAngleIndex(innerLoop, 0);
+
+  const polygon: Point2D[] = [];
+  const outerSpan = walkLoop(cleanOuter, outerStartIndex, outerEndIndex, true);
+  const innerSpan = walkLoop(innerLoop, innerStartIndex, innerEndIndex, false);
+
+  for (const point of outerSpan) {
+    pushPoint(polygon, point);
+  }
+
+  pushPoint(polygon, innerLoop[innerStartIndex]);
+
+  for (const point of innerSpan) {
+    pushPoint(polygon, point);
+  }
+
+  pushPoint(polygon, cleanOuter[outerStartIndex]);
+
+  return closeLoop(polygon);
+}
+
 function triangulatePolygon(points: Point2D[]): Triangle[] {
   const cleanPoints = dedupeClosingPoint(points);
   if (cleanPoints.length < 3) {
@@ -111,6 +217,21 @@ function triangulatePolygon(points: Point2D[]): Triangle[] {
   return triangles;
 }
 
+function closeLoop(points: Point2D[]): Point2D[] {
+  if (points.length === 0) {
+    return [];
+  }
+
+  const closed = points.slice();
+  const firstPoint = closed[0];
+  const lastPoint = closed[closed.length - 1];
+  if (!almostEqualPoint(firstPoint, lastPoint)) {
+    closed.push(firstPoint);
+  }
+
+  return closed;
+}
+
 function buildSideTriangles(pointCount: number): Triangle[] {
   const triangles: Triangle[] = [];
   const topOffset = pointCount;
@@ -124,38 +245,52 @@ function buildSideTriangles(pointCount: number): Triangle[] {
   return triangles;
 }
 
-export function extrudeOutlineToSolid(outline: Point2D[], thickness: number): SolidMesh {
-  const cleanOutline = dedupeClosingPoint(outline);
-  if (cleanOutline.length < 3) {
+function extrudePolygonToSolid(polygon: Point2D[], thickness: number): SolidMesh {
+  const cleanPolygon = dedupeClosingPoint(polygon);
+  if (cleanPolygon.length < 3) {
     throw new Error('Outline requires at least three points');
   }
 
   const halfThickness = thickness / 2;
   const vertices: Point3D[] = [];
 
-  for (const [x, y] of cleanOutline) {
+  for (const [x, y] of cleanPolygon) {
     vertices.push([x, y, -halfThickness]);
   }
 
-  for (const [x, y] of cleanOutline) {
+  for (const [x, y] of cleanPolygon) {
     vertices.push([x, y, halfThickness]);
   }
 
   const triangles: Triangle[] = [];
-  const topTriangles = triangulatePolygon(cleanOutline);
+  const topTriangles = triangulatePolygon(cleanPolygon);
   for (const [a, b, c] of topTriangles) {
     triangles.push([a, b, c]);
-    triangles.push([cleanOutline.length + c, cleanOutline.length + b, cleanOutline.length + a]);
+    triangles.push([cleanPolygon.length + c, cleanPolygon.length + b, cleanPolygon.length + a]);
   }
 
-  triangles.push(...buildSideTriangles(cleanOutline.length));
+  triangles.push(...buildSideTriangles(cleanPolygon.length));
 
   return {
     vertices,
     triangles,
-    outline: cleanOutline,
+    outline: cleanPolygon,
     thickness,
   };
+}
+
+export function extrudeOutlineToSolid(outline: Point2D[], thickness: number): SolidMesh {
+  return extrudePolygonToSolid(outline, thickness);
+}
+
+export function extrudeOutlineWithCircularHoleToSolid(
+  outline: Point2D[],
+  thickness: number,
+  holeRadius: number,
+  holeSegments = 48,
+): SolidMesh {
+  const polygon = buildPolygonWithCircularHole(outline, holeRadius, holeSegments);
+  return extrudePolygonToSolid(polygon, thickness);
 }
 
 export function getSolidBounds(mesh: SolidMesh): { min: Point3D; max: Point3D } {
