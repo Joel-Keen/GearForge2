@@ -1,7 +1,9 @@
 # GearForge2
-Successor to Gearforge original version. Ongoing work
+Successor to Gearforge original version.
 
-## Local development
+Deploy via push and github actions
+
+<!-- ## Local development
 
 ```bash
 npm install
@@ -26,4 +28,4 @@ npm run build
 npm run deploy
 ```
 
-This command builds the app and pushes dist to the gh-pages branch.
+This command builds the app and pushes dist to the gh-pages branch. -->
