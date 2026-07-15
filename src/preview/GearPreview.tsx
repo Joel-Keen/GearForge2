@@ -136,9 +136,9 @@ export default function GearPreview({ mesh, params, metrics }: GearPreviewProps)
     );
     scene.add(edges);
 
-    const grid = new THREE.GridHelper(200, 20, 0x243247, 0x1a2230);
+    const grid = new THREE.GridHelper(200, 40, 0x243247, 0x1a2230);
     grid.position.z = -(geometry.boundingBox?.max.z ?? 0);
-    scene.add(grid);
+    // scene.add(grid);
 
     fitCameraToMesh(camera, mesh);
     controls.target.set(0, 0, 0);

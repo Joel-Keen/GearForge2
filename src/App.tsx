@@ -48,12 +48,7 @@ export default function App() {
   return (
     <main className="shell">
       <section className="hero">
-        <p className="eyebrow">GearForge2 local preview</p>
-        <h1>Preview the gear solid in-browser.</h1>
-        <p className="lede">
-          This page now renders the generated gear solid directly in a local Three.js viewport,
-          so you can test the geometry without leaving the app.
-        </p>
+        <p className="eyebrow">GearForge2</p>
       </section>
 
       <section className="preview-layout">
@@ -132,10 +127,10 @@ export default function App() {
           <pre>{JSON.stringify(metrics, null, 2)}</pre>
         </article>
 
-        <article className="card">
+        {/* <article className="card">
           <h2>Display metrics</h2>
           <pre>{JSON.stringify(displayMetrics, null, 2)}</pre>
-        </article>
+        </article> */}
 
         <article className="card">
           <h2>Legacy v1 shape</h2>
