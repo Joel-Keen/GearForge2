@@ -1,5 +1,5 @@
 # GearForge2
-Successor to Gearforge original version
+Successor to Gearforge original version. Ongoing work
 
 ## Local development
 
