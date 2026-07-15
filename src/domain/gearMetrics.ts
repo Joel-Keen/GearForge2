@@ -46,7 +46,7 @@ export function calculateGearMetrics(params: Pick<GearParams, 'module' | 'teeth'
   const tip_radius = pitch_radius + addendum;
   const root_radius = pitch_radius - dedendum;
   const base_circle_radius = pitch_radius * Math.cos((params.pressure_angle * Math.PI) / 180);
-  const basic_cost = 0.01 * 3.14 * pitch_radius^2 * params.face_width; // Placeholder for basic cost calculation
+  const basic_cost = 0.01 * 3.14 * pitch_radius * pitch_radius * params.face_width; // Placeholder for basic cost calculation
 
   return {
     pitch_radius: round3(pitch_radius),
