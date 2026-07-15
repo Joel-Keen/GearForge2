@@ -26,4 +26,4 @@ npm run build
 npm run deploy
 ```
 
-This command builds the app and pushes web/dist to the gh-pages branch.
+This command builds the app and pushes dist to the gh-pages branch.
