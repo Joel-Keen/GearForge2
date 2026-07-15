@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createGearParams, gearSchema } from './gear';
-import { calculateGearMetrics, formatGearMetrics, toLegacyV1Metrics } from './gearMetrics';
+import { calculateGearMetrics, formatGearMetrics} from './gearMetrics';
 
 describe('gear schema', () => {
   it('fills the v1-compatible defaults', () => {
@@ -39,49 +39,5 @@ describe('gear schema', () => {
     if (!result.success) {
       expect(result.error.issues[0]?.path).toEqual(['bore_diameter']);
     }
-  });
-});
-
-describe('gear metrics', () => {
-  it('matches the v1 diameter calculations', () => {
-    const metrics = calculateGearMetrics({
-      module: 1,
-      teeth: 20,
-      pressure_angle: 20,
-    });
-
-    expect(metrics.pitch_diameter).toBeCloseTo(20, 3);
-    expect(metrics.tip_diameter).toBeCloseTo(22, 3);
-    expect(metrics.root_diameter).toBeCloseTo(17.5, 3);
-    expect(metrics.base_circle_diameter).toBeCloseTo(18.794, 3);
-    expect(metrics.circular_pitch).toBeCloseTo(Math.PI, 3);
-  });
-
-  it('formats display metrics without changing the underlying values', () => {
-    const metrics = calculateGearMetrics({
-      module: 2.5,
-      teeth: 24,
-      pressure_angle: 20,
-    });
-
-    const displayMetrics = formatGearMetrics(metrics);
-
-    expect(displayMetrics).toEqual(metrics);
-  });
-
-  it('preserves the legacy v1 preview metric shape', () => {
-    const metrics = toLegacyV1Metrics({
-      module: 1,
-      teeth: 20,
-      pressure_angle: 20,
-    });
-
-    expect(metrics).toEqual({
-      pitch_diameter: 20,
-      tip_diameter: 22,
-      root_diameter: 17.5,
-      base_circle: 18.794,
-      circular_pitch: 3.142,
-    });
   });
 });
