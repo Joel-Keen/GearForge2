@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { createGearParams } from './domain';
-import { calculateGearMetrics, formatGearMetrics, toLegacyV1Metrics } from './domain';
+import { calculateGearMetrics, formatGearMetrics} from './domain';
 import { buildGearSolid } from './geometry';
 import { GearPreview } from './preview';
 
@@ -42,7 +42,6 @@ export default function App() {
 
   const metrics = useMemo(() => calculateGearMetrics(params), [params]);
   const displayMetrics = useMemo(() => formatGearMetrics(metrics), [metrics]);
-  const legacyMetrics = useMemo(() => toLegacyV1Metrics(params), [params]);
   const solid = useMemo(() => buildGearSolid(params, metrics), [params, metrics]);
 
   return (
@@ -125,16 +124,6 @@ export default function App() {
         <article className="card">
           <h2>Derived metrics</h2>
           <pre>{JSON.stringify(metrics, null, 2)}</pre>
-        </article>
-
-        {/* <article className="card">
-          <h2>Display metrics</h2>
-          <pre>{JSON.stringify(displayMetrics, null, 2)}</pre>
-        </article> */}
-
-        <article className="card">
-          <h2>Legacy v1 shape</h2>
-          <pre>{JSON.stringify(legacyMetrics, null, 2)}</pre>
         </article>
       </section>
     </main>
